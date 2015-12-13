@@ -25,13 +25,16 @@ $result = New-Object PSObject;
 Set-Attr $result "changed" $false;
 
 $name = Get-Attr $params "name" -failifempty $true
+$display_name = Get-Attr $params "display_name" $false
+$description = Get-Attr $params "description" $false
+$path = Get-Attr $params "path" $false
 $state = Get-Attr $params "state" $false
 $startMode = Get-Attr $params "start_mode" $false
 
 If ($state) {
     $state = $state.ToString().ToLower()
-    If (($state -ne 'started') -and ($state -ne 'stopped') -and ($state -ne 'restarted')) {
-        Fail-Json $result "state is '$state'; must be 'started', 'stopped', or 'restarted'"
+    If (($state -ne 'present') -and ($state -ne 'absent') -and ($state -ne 'started') -and ($state -ne 'stopped') -and ($state -ne 'restarted')) {
+        Fail-Json $result "state is '$state'; must be 'present', 'absent', 'started', 'stopped', or 'restarted'"
     }
 }
 
@@ -45,7 +48,25 @@ If ($startMode) {
 $svcName = $name
 $svc = Get-Service -Name $svcName -ErrorAction SilentlyContinue
 If (-not $svc) {
+    If ($state -eq "present") {
+        If (-not $path) {
+            Fail-Json $result "path must be specified when state is '$state'"
+        }
+        $svc = New-Service -Name $svcName -DisplayName $display_name -BinaryPathName -Description $description
+        
+        Set-Attr $result "changed" $true
+        Set-Attr $result "state" $state
+    }
     Fail-Json $result "Service '$svcName' not installed"
+} Else {
+    If ($state -eq "absent") {
+        Stop-Service -Name $svcName
+        $svc.delete()
+        
+        Set-Attr $result "changed" $true
+        Set-Attr $result "state" $state
+        Exit-Json $result
+    }
 }
 # Use service name instead of display name for remaining actions.
 If ($svcName -ne $svc.ServiceName) {
@@ -59,6 +80,7 @@ $svcMode = Get-WmiObject -Class Win32_Service -Property StartMode -Filter "Name=
 If ($startMode) {
     If ($svcMode.StartMode.ToLower() -ne $startMode) {
         Set-Service -Name $svcName -StartupType $startMode
+        
         Set-Attr $result "changed" $true
         Set-Attr $result "start_mode" $startMode
     }

@@ -35,6 +35,24 @@ options:
     required: true
     default: null
     aliases: []
+  display_name:
+    description:
+      - The Display Name of the service - Used during service creation
+    required: false
+    default: null
+    aliases: []
+  description:
+    description:
+      - Set the description of the service - Used during service creation
+    required: false
+    default: null
+    aliases: []
+  path:
+    description:
+      - The path to the executable file - Used during service creation
+    required: false
+    default: null
+    aliases: []
   start_mode:
     description:
       - Set the startup type for the service
@@ -45,11 +63,13 @@ options:
       - disabled
   state:
     description:
-      - C(started)/C(stopped) are idempotent actions that will not run
+      - C(present)/C(absent)/C(started)/C(stopped) are idempotent actions that will not run
         commands unless necessary.  C(restarted) will always bounce the
         service.
     required: false
     choices:
+      - present
+      - absent
       - started
       - stopped
       - restarted
