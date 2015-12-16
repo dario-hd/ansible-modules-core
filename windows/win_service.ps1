@@ -52,7 +52,12 @@ If (-not $svc) {
         If (-not $path) {
             Fail-Json $result "path must be specified when state is '$state'"
         }
-        New-Service -Name $svcName -DisplayName $display_name -BinaryPathName $path -Description $description
+        Try {
+            New-Service -Name $svcName -DisplayName $display_name -BinaryPathName $path -Description $description -ErrorAction Stop
+        } Catch {
+            Fail-Json $result $_.Exception.Message
+        }
+        
         $svc = Get-Service -Name $svcName -ErrorAction SilentlyContinue
         
         Set-Attr $result "changed" $true
@@ -64,8 +69,13 @@ If (-not $svc) {
     }
 } Else {
     If ($state -eq "absent") {
-        Stop-Service -Name $svcName
-        (Get-WmiObject Win32_Service -filter "name='$svcName'").Delete()
+        Try {
+            Stop-Service -Name $svcName -ErrorAction Stop
+            (Get-WmiObject Win32_Service -filter "name='$svcName'").Delete()
+        }
+        Catch {
+            Fail-Json $result $_.Exception.Message
+        }
         
         Set-Attr $result "changed" $true
         Set-Attr $result "state" $state
